@@ -329,12 +329,15 @@ func (s *KCPConn) doKcpInput(data []byte) bool {
 
 func (s *KCPConn) goRunClientRecv() {
     go func() {
+        defer serveRecover()
+
         for {
             data := udpPacketPool.Get().([]byte)[:udpPacketSizeLimit]
             if n, _, err := s.conn.ReadFrom(data); err == nil {
                 select {
                 case s.chUdpInput <- data[:n]:
                 case <-s.die:
+                    udpPacketPool.Put(data)
                 }
             } else if err != nil {
                 //FIXME: what to do ?
