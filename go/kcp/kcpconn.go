@@ -11,6 +11,7 @@ import (
     "log"
     "math"
     "io"
+    "runtime"
 )
 
 type errTimeout struct {
@@ -634,11 +635,22 @@ type (
     }
 )
 
+func serveRecover() {
+    if r := recover(); r != nil {
+        trace := make([]byte, 4096)
+        runtime.Stack(trace, false)
+
+        log.Printf("Recovered in serve", r, string(trace))
+    }
+}
+
 // monitor incoming data for all connections of server
 func (l *Listener) server() {
     chPacket := make(chan packet, rxQueueLimit)
 
     go func () {
+        defer serveRecover()
+
         for {
             data := udpPacketPool.Get().([]byte)[:udpPacketSizeLimit]
             if n, from, err := l.conn.ReadFrom(data); err == nil {
